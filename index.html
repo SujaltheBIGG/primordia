@@ -116,6 +116,31 @@ header, section { display: flex; flex-direction: column; gap: 24px; }
 .tbl td.v, .tbl tfoot td { font-variant-numeric: tabular-nums; }
 .tbl tfoot th, .tbl tfoot td { border-bottom: 0; font-weight: 600; font-size: 17px; }
 .tbl #tv { font-family: var(--display); font-size: 34px; font-weight: 400; color: var(--accent); }
+
+/* advanced builds: architecture diagrams */
+.arch { grid-column: 1 / -1; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.arch .scroll { overflow-x: auto; background: var(--surface); border-radius: 14px; padding: 20px; }
+.arch svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.arch figcaption { font-size: 13px; color: var(--muted); }
+.arch .nd { fill: var(--bg); stroke: var(--line); stroke-width: 1; }
+.arch .core { fill: var(--accent); stroke: none; }
+.arch .gate { fill: var(--bg); stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.arch .t { fill: var(--fg); font: 600 13px var(--body); }
+.arch .s { fill: var(--muted); font: 400 11px var(--body); }
+.arch .core-t { fill: var(--bg); font: 600 14px var(--body); }
+.arch .core-s { fill: var(--bg); font: 400 11px var(--body); opacity: 0.85; }
+.arch .e { stroke: var(--muted); stroke-width: 1.25; fill: none; }
+.arch .e-acc { stroke: var(--accent); stroke-width: 1.5; fill: none; }
+.arch .ah { fill: var(--muted); }
+.arch .ah-acc { fill: var(--accent); }
+.term .t-time { color: var(--dev-muted); }
+.ans { display: flex; flex-direction: column; gap: 8px; }
+.ans .q { font-family: var(--mono); font-size: 12px; color: var(--dev-gold); }
+.ans .src { color: var(--dev-gold); font-size: 11px; white-space: nowrap; }
+.kpi { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--dev-line); font-variant-numeric: tabular-nums; }
+.kpi:first-of-type { border-top: 0; }
+.kpi b { font-weight: 600; }
+.kpi .up { color: var(--dev-ok); font-size: 12px; margin-left: 6px; }
 .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 32px; }
 .steps li { display: flex; flex-direction: column; gap: 8px; }
 .steps .n { font-family: var(--display); font-size: 56px; line-height: 1; color: var(--accent); }
@@ -336,6 +361,146 @@ header, section { display: flex; flex-direction: column; gap: 24px; }
     <li><span class="n">3</span><h4>We take the rest of the list</h4><p>If it earns its place, we work through the remaining workflows as one monthly partnership: we build, host, monitor and fix all of it.</p></li>
   </ol>
   <p>You are an early stage startup, so you should not be paying for promises. The first build proves the value, and we agree the commercial side once you have seen it working.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Advanced builds</div>
+  <h2>Agent swarms and graphs, <em>for the hard problems</em></h2>
+  <p class="lead">Three systems we design for messier, higher stakes work, shown with example data and the architecture behind them. You are a technical team, so this is the part to pick apart on the call.</p>
+
+  <article class="build">
+    <div class="story">
+      <div class="stage"><h4>Logistics</h4><span class="who">Freight operators with thousands of live shipments and a small ops desk</span></div>
+      <h3>An agent swarm that <em>runs the exception desk</em></h3>
+      <p>Most shipments are fine. The ops team's day goes on the few that are not: a berth delay, a customs hold, a missed truck. A team of agents watches every shipment, spots trouble early, prices the fixes inside the operator's cost rules, rebooks what it is allowed to, and tells the customer before they ask. People only approve the expensive calls.</p>
+      <dl class="facts">
+        <dt>Stack</dt><dd>Python agents on a queue, Postgres for shared shipment state, carrier APIs and EDI, one model per agent with tool calls</dd>
+        <dt>Guardrails</dt><dd>Cost and delivery rules live in code, a spend cap per agent per day, every action logged with its reason</dd>
+        <dt>Human step</dt><dd>Approve any rebooking over the cost limit</dd>
+        <dt>Tested by</dt><dd>Replaying months of past shipments before it touches a live booking</dd>
+      </dl>
+    </div>
+    <div class="device" role="img" aria-label="Example run log of the logistics agent swarm handling a port delay">
+      <div class="dev-top"><div class="dots"><i></i><i></i><i></i></div><b>swarm run log</b><span>example</span></div>
+      <div class="panel">
+<pre class="term"><span class="t-time">09:14</span> <span class="p">tracker </span> MSKU 447120, Rotterdam berth +36h
+<span class="t-time">09:14</span> <span class="p">orch    </span> 3 orders miss Thursday delivery
+<span class="t-time">09:15</span> <span class="p">rebook  </span> A: rail via Duisburg  €1,180  +6h
+                 B: direct truck      €2,640  +2h
+<span class="t-time">09:15</span> <span class="p">orch    </span> <span class="ok">A is inside cost rules, booked</span>
+<span class="t-time">09:16</span> <span class="p">customer</span> update sent to 3 consignees
+<span class="t-time">09:21</span> <span class="p">rebook  </span> order 8812 needs air, €4,900
+<span class="t-time">     </span> <span class="w">⧗ waiting for approval, limit €2,500</span></pre>
+      </div>
+      <div class="dev-foot"><span>6 actions, 1 approval needed</span><span>7 min</span></div>
+    </div>
+    <figure class="arch">
+      <div class="scroll">
+        <svg viewBox="0 0 960 296" role="img" aria-label="Swarm architecture: three data sources feed an orchestrator, which shares state with four specialist agents; the rebooking agent routes expensive changes to a human approval step">
+          <defs>
+            <marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0L10 5L0 10z"/></marker>
+            <marker id="ah1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-acc" d="M0 0L10 5L0 10z"/></marker>
+          </defs>
+          <path class="e" d="M180 54 L288 128" marker-end="url(#ah1)"/>
+          <path class="e" d="M180 150 L288 150" marker-end="url(#ah1)"/>
+          <path class="e" d="M180 246 L288 172" marker-end="url(#ah1)"/>
+          <path class="e" d="M490 150 L578 38" marker-end="url(#ah1)"/>
+          <path class="e" d="M490 150 L578 108" marker-end="url(#ah1)"/>
+          <path class="e" d="M490 150 L578 178" marker-end="url(#ah1)"/>
+          <path class="e" d="M490 150 L578 248" marker-end="url(#ah1)"/>
+          <path class="e" d="M390 192 L390 230" marker-start="url(#ah1)" marker-end="url(#ah1)"/>
+          <path class="e-acc" d="M770 178 L818 178" marker-end="url(#ah1a)"/>
+          <rect class="nd" x="10" y="30" width="170" height="48" rx="8"/><text class="t" x="24" y="50">Carrier APIs + EDI</text><text class="s" x="24" y="67">status every 15 minutes</text>
+          <rect class="nd" x="10" y="126" width="170" height="48" rx="8"/><text class="t" x="24" y="146">Ops inbox</text><text class="s" x="24" y="163">carrier and customs email</text>
+          <rect class="nd" x="10" y="222" width="170" height="48" rx="8"/><text class="t" x="24" y="242">Port + vessel data</text><text class="s" x="24" y="259">ETAs and berth delays</text>
+          <rect class="core" x="290" y="110" width="200" height="80" rx="10"/><text class="core-t" x="306" y="138">Orchestrator</text><text class="core-s" x="306" y="157">plans and assigns work,</text><text class="core-s" x="306" y="172">holds budget and cost rules</text>
+          <rect class="nd" x="290" y="232" width="200" height="48" rx="8"/><text class="t" x="306" y="252">Shared shipment state</text><text class="s" x="306" y="269">every agent reads and writes</text>
+          <rect class="nd" x="580" y="14" width="190" height="48" rx="8"/><text class="t" x="594" y="34">Tracker agent</text><text class="s" x="594" y="51">spots delays early</text>
+          <rect class="nd" x="580" y="84" width="190" height="48" rx="8"/><text class="t" x="594" y="104">Inbox agent</text><text class="s" x="594" y="121">reads and files carrier email</text>
+          <rect class="nd" x="580" y="154" width="190" height="48" rx="8"/><text class="t" x="594" y="174">Rebooking agent</text><text class="s" x="594" y="191">prices fixes inside the rules</text>
+          <rect class="nd" x="580" y="224" width="190" height="48" rx="8"/><text class="t" x="594" y="244">Customer agent</text><text class="s" x="594" y="261">writes the update</text>
+          <rect class="gate" x="820" y="154" width="130" height="48" rx="8"/><text class="t" x="834" y="174">Your approval</text><text class="s" x="834" y="191">only over the limit</text>
+        </svg>
+      </div>
+      <figcaption>How the swarm is wired. The orchestrator is the only agent that can spend money, and it stops at the approval step above the limit.</figcaption>
+    </figure>
+  </article>
+
+  <article class="build">
+    <div class="story">
+      <div class="stage"><h4>Financial research</h4><span class="who">Research teams that need answers they can trace back to a source</span></div>
+      <h3>A knowledge graph <em>over company evidence</em></h3>
+      <p>Filings, earnings calls and news are turned into a graph of companies, executives, suppliers, segments and claims. Every edge carries the date and the exact sentence it came from. Agents query the graph instead of rereading documents, so answers come back fast, connected across companies, and with citations attached.</p>
+      <dl class="facts">
+        <dt>Stack</dt><dd>Extraction model with a strict schema, entity resolution, Neo4j or Postgres, a vector index for the raw text, an MCP server for agents</dd>
+        <dt>Guardrails</dt><dd>No source, no edge. Every fact links back to the sentence that supports it</dd>
+        <dt>Tested by</dt><dd>A hand labelled sample of filings, with extraction precision and recall tracked on every change</dd>
+      </dl>
+    </div>
+    <div class="device" role="img" aria-label="Example graph query with three cited answers">
+      <div class="dev-top"><div class="dots"><i></i><i></i><i></i></div><b>graph query</b><span>example data</span></div>
+      <div class="panel ans">
+        <div class="q">agent › which suppliers of Northwind Metals flagged margin pressure since July?</div>
+        <div class="row"><span class="sev warn"></span><div><b>Contoso Alloys</b><small>"input costs rose 9% in the quarter" · Q3 call, 14 Oct</small></div><span class="src">source ↗</span></div>
+        <div class="row"><span class="sev warn"></span><div><b>Fabrikam Mining</b><small>"pricing pressure from our largest customer" · 10-Q, 2 Aug</small></div><span class="src">source ↗</span></div>
+        <div class="row"><span class="sev gold"></span><div><b>Litware Logistics</b><small>"freight surcharges we could not pass on" · news, 19 Sep</small></div><span class="src">source ↗</span></div>
+      </div>
+      <div class="dev-foot"><span>3 hops, 214 edges checked</span><span>0.8 s</span></div>
+    </div>
+    <figure class="arch">
+      <div class="scroll">
+        <svg viewBox="0 0 960 100" role="img" aria-label="Graph pipeline: sources, extract, resolve entities, graph store, agent tools">
+          <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah" d="M0 0L10 5L0 10z"/></marker></defs>
+          <path class="e" d="M176 50 L194 50" marker-end="url(#ah2)"/><path class="e" d="M372 50 L390 50" marker-end="url(#ah2)"/><path class="e" d="M568 50 L586 50" marker-end="url(#ah2)"/><path class="e" d="M764 50 L782 50" marker-end="url(#ah2)"/>
+          <rect class="nd" x="0" y="18" width="176" height="64" rx="8"/><text class="t" x="16" y="44">Sources</text><text class="s" x="16" y="62">filings, calls, news</text>
+          <rect class="nd" x="196" y="18" width="176" height="64" rx="8"/><text class="t" x="212" y="44">Extract</text><text class="s" x="212" y="62">model to a fixed schema</text>
+          <rect class="nd" x="392" y="18" width="176" height="64" rx="8"/><text class="t" x="408" y="44">Resolve</text><text class="s" x="408" y="62">one node per real entity</text>
+          <rect class="nd" x="588" y="18" width="176" height="64" rx="8"/><text class="t" x="604" y="44">Graph store</text><text class="s" x="604" y="62">date + source on edges</text>
+          <rect class="core" x="784" y="18" width="176" height="64" rx="8"/><text class="core-t" x="800" y="44">Agent tools</text><text class="core-s" x="800" y="62">queried over MCP</text>
+        </svg>
+      </div>
+      <figcaption>The same pipeline would sit next to your models: they keep doing the predicting, the graph keeps the evidence organised.</figcaption>
+    </figure>
+  </article>
+
+  <article class="build">
+    <div class="story">
+      <div class="stage"><h4>AI product teams</h4><span class="who">Teams shipping model outputs to users who will check them</span></div>
+      <h3>An eval swarm that <em>tests your model every night</em></h3>
+      <p>One agent writes new test cases from real inputs, a second hunts for the edge cases that break things, and a third scores every output against your rubric. Each morning the team gets one report with regressions at the top, so a bad change is caught before a user sees it.</p>
+      <dl class="facts">
+        <dt>Stack</dt><dd>Agent roles on top of your model's API, the rubric in a versioned file, results in a table your team already reads</dd>
+        <dt>Guardrails</dt><dd>The judge agent is checked against human scores before its grades are trusted</dd>
+        <dt>Human step</dt><dd>Review the regression list, usually a handful of cases</dd>
+      </dl>
+    </div>
+    <div class="device" role="img" aria-label="Example nightly eval report">
+      <div class="dev-top"><div class="dots"><i></i><i></i><i></i></div><b>nightly eval</b><span>example data</span></div>
+      <div class="panel">
+        <div class="kpi"><span>Cases run</span><b>1,240</b></div>
+        <div class="kpi"><span>Direction of revision correct</span><b>91.2%<span class="up">+0.8</span></b></div>
+        <div class="kpi"><span>Answer cites a real source</span><b>99.6%</b></div>
+        <div class="kpi"><span>New adversarial cases added</span><b>38</b></div>
+        <div class="row"><span class="sev warn"></span><div><b>7 regressions, all on spin off events</b><small>first seen after last night's change</small></div><span class="btn on">Review</span></div>
+      </div>
+      <div class="dev-foot"><span>Run finished 05:40</span><span>Report sent</span></div>
+    </div>
+    <figure class="arch">
+      <div class="scroll">
+        <svg viewBox="0 0 960 120" role="img" aria-label="Eval loop: your model, generator agent, adversary agent, judge agent, report, and back to the model">
+          <defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah" d="M0 0L10 5L0 10z"/></marker></defs>
+          <path class="e" d="M176 42 L194 42" marker-end="url(#ah3)"/><path class="e" d="M372 42 L390 42" marker-end="url(#ah3)"/><path class="e" d="M568 42 L586 42" marker-end="url(#ah3)"/><path class="e" d="M764 42 L782 42" marker-end="url(#ah3)"/>
+          <path class="e" d="M872 74 L872 104 L88 104 L88 78" marker-end="url(#ah3)"/>
+          <rect class="core" x="0" y="10" width="176" height="64" rx="8"/><text class="core-t" x="16" y="36">Your model</text><text class="core-s" x="16" y="54">unchanged, called by API</text>
+          <rect class="nd" x="196" y="10" width="176" height="64" rx="8"/><text class="t" x="212" y="36">Generator agent</text><text class="s" x="212" y="54">writes test cases</text>
+          <rect class="nd" x="392" y="10" width="176" height="64" rx="8"/><text class="t" x="408" y="36">Adversary agent</text><text class="s" x="408" y="54">hunts edge cases</text>
+          <rect class="nd" x="588" y="10" width="176" height="64" rx="8"/><text class="t" x="604" y="36">Judge agent</text><text class="s" x="604" y="54">scores to your rubric</text>
+          <rect class="nd" x="784" y="10" width="176" height="64" rx="8"/><text class="t" x="800" y="36">Report</text><text class="s" x="800" y="54">regressions first</text>
+        </svg>
+      </div>
+      <figcaption>The loop runs every night. Failing cases are kept, so the test set grows with every bug it catches.</figcaption>
+    </figure>
+  </article>
 </section>
 
 <section class="cta">
